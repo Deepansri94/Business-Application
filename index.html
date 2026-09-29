@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>மகரஜோதி - Maharajothi Enterprises</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Catamaran:wght@400;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <nav class="sidebar">
+    <div class="logo">
+      <span class="shop-name-tamil">🖨️ மகரஜோதி</span>
+      <span class="shop-name-sub">Maharajothi Enterprises</span>
+    </div>
+    <ul>
+      <li class="nav-item active" data-page="dashboard">📊 Dashboard</li>
+      <li class="nav-item" data-page="customers">👥 Customers</li>
+      <li class="nav-item" data-page="transactions">💰 Transactions</li>
+      <li class="nav-item" data-page="billing">🧾 Billing</li>
+      <li class="nav-item" data-page="messages">📢 Messages</li>
+    </ul>
+  </nav>
+
+  <main class="content">
+    <!-- Dashboard -->
+    <section id="dashboard" class="page active">
+      <h2>Dashboard</h2>
+      <div class="stats-grid">
+        <div class="stat-card"><span class="stat-label">Total Customers</span><span class="stat-value" id="stat-customers">0</span></div>
+        <div class="stat-card"><span class="stat-label">Today's Revenue</span><span class="stat-value" id="stat-today">₹0</span></div>
+        <div class="stat-card"><span class="stat-label">Total Transactions</span><span class="stat-value" id="stat-txns">0</span></div>
+        <div class="stat-card"><span class="stat-label">Total Revenue</span><span class="stat-value" id="stat-revenue">₹0</span></div>
+      </div>
+      <h3>Recent Transactions</h3>
+      <table class="data-table" id="recent-txns-table">
+        <thead><tr><th>Date</th><th>Customer</th><th>Items</th><th>Amount</th></tr></thead>
+        <tbody id="recent-txns-body"></tbody>
+      </table>
+    </section>
+
+    <!-- Customers -->
+    <section id="customers" class="page">
+      <h2>Customers</h2>
+      <button class="btn btn-primary" onclick="openModal('customer-modal')">+ Add Customer</button>
+      <table class="data-table" id="customers-table">
+        <thead><tr><th>Name</th><th>Phone</th><th>Email</th><th>Actions</th></tr></thead>
+        <tbody id="customers-body"></tbody>
+      </table>
+    </section>
+
+    <!-- Transactions -->
+    <section id="transactions" class="page">
+      <h2>Transactions</h2>
+      <button class="btn btn-primary" onclick="openModal('txn-modal')">+ New Transaction</button>
+      <table class="data-table" id="txns-table">
+        <thead><tr><th>Date</th><th>Customer</th><th>Items</th><th>Amount</th><th>Actions</th></tr></thead>
+        <tbody id="txns-body"></tbody>
+      </table>
+    </section>
+
+    <!-- Billing -->
+    <section id="billing" class="page">
+      <h2>Generate Bill</h2>
+      <div class="bill-form card">
+        <div class="form-row">
+          <label>Customer</label>
+          <div class="input-with-btn">
+            <select id="bill-customer"><option value="">-- Select Customer --</option></select>
+            <button class="btn btn-secondary" onclick="openModal('customer-modal')">+ Add Customer</button>
+          </div>
+        </div>
+        <div id="bill-items-list"></div>
+        <button class="btn btn-secondary" onclick="addBillItem()">+ Add Item</button>
+        <div class="bill-total">Total: ₹<span id="bill-total-val">0.00</span></div>
+        <div class="form-row">
+          <label>Payment Mode</label>
+          <select id="bill-payment">
+            <option>Cash</option><option>UPI</option><option>Card</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Notes</label>
+          <input type="text" id="bill-notes" placeholder="Optional notes" />
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="generateBill()">Generate & Save Bill</button>
+          <button class="btn btn-outline" onclick="printBill()">🖨️ Print Bill</button>
+        </div>
+      </div>
+      <div id="bill-preview" class="bill-preview hidden"></div>
+    </section>
+
+    <!-- Messages -->
+    <section id="messages" class="page">
+      <h2>📱 Send WhatsApp Messages</h2>
+      <div id="wa-status-badge" class="wa-badge offline" onclick="checkWAStatus()">🔴 Checking server...</div>
+      <div class="card msg-form">
+        <div class="wa-info">💡 Clicking <strong>Send</strong> will open WhatsApp for each selected customer with the message pre-filled.</div>
+        <div class="form-row">
+          <label>Recipients</label>
+          <select id="msg-recipients" onchange="toggleCustomerSelect()">
+            <option value="all">All Customers</option>
+            <option value="select">Select Customers</option>
+          </select>
+        </div>
+        <div id="msg-customer-select" class="hidden">
+          <label style="font-size:.82rem;font-weight:600;color:#64748b;display:block;margin-bottom:8px">Choose Customers</label>
+          <div id="msg-customer-checkboxes" class="checkbox-list"></div>
+        </div>
+        <div class="form-row">
+          <label>Message / Offer</label>
+          <textarea id="msg-text" rows="5" placeholder="e.g. 🎉 Special offer! Get 20% off on all Xerox copies this week. Visit us today!"></textarea>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-whatsapp" onclick="sendWhatsApp()">💬 Send via WhatsApp</button>
+        </div>
+      </div>
+      <div id="msg-log" class="msg-log"></div>
+    </section>
+  </main>
+
+  <!-- Customer Modal -->
+  <div class="modal-overlay hidden" id="customer-modal">
+    <div class="modal">
+      <h3 id="customer-modal-title">Add Customer</h3>
+      <input type="hidden" id="edit-customer-id" />
+      <div class="form-row"><label>Name *</label><input type="text" id="c-name" placeholder="Full Name" /></div>
+      <div class="form-row"><label>Phone *</label><input type="tel" id="c-phone" placeholder="10-digit mobile" /></div>
+      <div class="form-row"><label>Email</label><input type="email" id="c-email" placeholder="Email (optional)" /></div>
+      <div class="form-row"><label>Address</label><input type="text" id="c-address" placeholder="Address (optional)" /></div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="saveCustomer()">Save</button>
+        <button class="btn btn-outline" onclick="closeModal('customer-modal')">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Transaction Modal -->
+  <div class="modal-overlay hidden" id="txn-modal">
+    <div class="modal">
+      <h3>New Transaction</h3>
+      <div class="form-row"><label>Customer</label>
+        <select id="txn-customer"><option value="">-- Walk-in / Select --</option></select>
+      </div>
+      <div id="txn-items-list"></div>
+      <button class="btn btn-secondary" onclick="addTxnItem()">+ Add Item</button>
+      <div class="bill-total">Total: ₹<span id="txn-total-val">0.00</span></div>
+      <div class="form-row"><label>Payment</label>
+        <select id="txn-payment"><option>Cash</option><option>UPI</option><option>Card</option></select>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="saveTransaction()">Save Transaction</button>
+        <button class="btn btn-outline" onclick="closeModal('txn-modal')">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
