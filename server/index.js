@@ -4,10 +4,13 @@ const qrcode = require('qrcode');
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
+const multer = require('multer');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
 
 let sock = null;
 let qrCodeData = null;
@@ -113,6 +116,38 @@ app.post('/send-bulk', async (req, res) => {
     try {
       const jid = '91' + c.phone.replace(/\D/g, '').slice(-10) + '@s.whatsapp.net';
       await sock.sendMessage(jid, { text: message });
+      results.push({ name: c.name, phone: c.phone, status: 'sent' });
+      await new Promise(r => setTimeout(r, 1200));
+    } catch (err) {
+      results.push({ name: c.name, phone: c.phone, status: 'failed', error: err.message });
+    }
+  }
+  res.json({ success: true, results });
+});
+
+// ── Send Bulk Media (with attachment) ─────────────────────────────
+app.post('/send-bulk-media', upload.single('attachment'), async (req, res) => {
+  const contacts = JSON.parse(req.body.contacts || '[]');
+  const message = req.body.message;
+  const file = req.file;
+
+  if (!isConnected) return res.status(503).json({ success: false, error: 'WhatsApp not connected. Please scan QR first.' });
+  if (!contacts.length || !message) return res.status(400).json({ success: false, error: 'contacts and message required' });
+
+  const isImage = file && file.mimetype.startsWith('image/');
+  const isPDF = file && file.mimetype === 'application/pdf';
+
+  const results = [];
+  for (const c of contacts) {
+    try {
+      const jid = '91' + c.phone.replace(/\D/g, '').slice(-10) + '@s.whatsapp.net';
+      if (file && isImage) {
+        await sock.sendMessage(jid, { image: file.buffer, caption: message, mimetype: file.mimetype });
+      } else if (file && isPDF) {
+        await sock.sendMessage(jid, { document: file.buffer, caption: message, mimetype: 'application/pdf', fileName: file.originalname || 'document.pdf' });
+      } else {
+        await sock.sendMessage(jid, { text: message });
+      }
       results.push({ name: c.name, phone: c.phone, status: 'sent' });
       await new Promise(r => setTimeout(r, 1200));
     } catch (err) {
