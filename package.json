@@ -12,14 +12,11 @@
     "appId": "com.maharajothi.business",
     "productName": "Maharajothi Business App",
     "win": {
-      "target": "nsis",
-      "icon": "assets/icon.ico"
+      "target": "nsis"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "installerIcon": "assets/icon.ico",
-      "uninstallerIcon": "assets/icon.ico",
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Maharajothi Business App"
@@ -28,12 +25,16 @@
       "**/*",
       "!server/auth_info/**",
       "!.git/**",
-      "!*.bat"
+      "!*.bat",
+      "!assets/**"
+    ],
+    "asarUnpack": [
+      "server/**/*"
     ],
     "extraResources": [
       {
         "from": "server/node_modules",
-        "to": "server/node_modules"
+        "to": "app.asar.unpacked/server/node_modules"
       }
     ]
   },

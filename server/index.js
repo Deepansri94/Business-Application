@@ -3,6 +3,7 @@ const cors = require('cors');
 const qrcode = require('qrcode');
 const path = require('path');
 const os = require('os');
+const fs = require('fs');
 
 const app = express();
 app.use(cors());
@@ -12,50 +13,55 @@ let sock = null;
 let qrCodeData = null;
 let isConnected = false;
 
-// store auth in user's home directory so it persists after updates
+// persist auth in user home so it survives app updates
 const AUTH_DIR = path.join(os.homedir(), '.maharajothi', 'auth_info');
+if (!fs.existsSync(AUTH_DIR)) fs.mkdirSync(AUTH_DIR, { recursive: true });
 
 async function connectWhatsApp() {
-  const {
-    makeWASocket,
-    useMultiFileAuthState,
-    DisconnectReason,
-    fetchLatestBaileysVersion
-  } = await import('@whiskeysockets/baileys');
-  const { default: pino } = await import('pino');
-  const { Boom } = await import('@hapi/boom');
+  try {
+    const baileys = require('@whiskeysockets/baileys');
+    const pino = require('pino');
+    const { Boom } = require('@hapi/boom');
 
-  const logger = pino({ level: 'silent' });
-  const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
-  const { version } = await fetchLatestBaileysVersion();
+    const makeWASocket = baileys.default || baileys.makeWASocket;
+    const { useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = baileys;
 
-  sock = makeWASocket({
-    version,
-    auth: state,
-    logger,
-    printQRInTerminal: false,
-    browser: ['Maharajothi Enterprises', 'Chrome', '1.0.0']
-  });
+    const logger = pino({ level: 'silent' });
+    const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
+    const { version } = await fetchLatestBaileysVersion();
 
-  sock.ev.on('creds.update', saveCreds);
+    sock = makeWASocket({
+      version,
+      auth: state,
+      logger,
+      printQRInTerminal: false,
+      browser: ['Maharajothi Enterprises', 'Chrome', '1.0.0']
+    });
 
-  sock.ev.on('connection.update', ({ connection, lastDisconnect, qr }) => {
-    if (qr) {
-      qrCodeData = qr;
-      isConnected = false;
-    }
-    if (connection === 'open') {
-      isConnected = true;
-      qrCodeData = null;
-      console.log('✅ WhatsApp connected!');
-    }
-    if (connection === 'close') {
-      isConnected = false;
-      const shouldReconnect = lastDisconnect?.error instanceof Boom &&
-        lastDisconnect.error.output?.statusCode !== DisconnectReason.loggedOut;
-      if (shouldReconnect) connectWhatsApp();
-    }
-  });
+    sock.ev.on('creds.update', saveCreds);
+
+    sock.ev.on('connection.update', ({ connection, lastDisconnect, qr }) => {
+      if (qr) {
+        qrCodeData = qr;
+        isConnected = false;
+      }
+      if (connection === 'open') {
+        isConnected = true;
+        qrCodeData = null;
+        console.log('✅ WhatsApp connected!');
+      }
+      if (connection === 'close') {
+        isConnected = false;
+        const code = lastDisconnect?.error?.output?.statusCode;
+        const shouldReconnect = code !== DisconnectReason.loggedOut;
+        console.log('Connection closed. Reconnect:', shouldReconnect, 'Code:', code);
+        if (shouldReconnect) setTimeout(connectWhatsApp, 3000);
+      }
+    });
+  } catch (err) {
+    console.error('WhatsApp init error:', err.message);
+    setTimeout(connectWhatsApp, 5000);
+  }
 }
 
 // ── QR Page ──────────────────────────────────────────────────────
@@ -63,7 +69,7 @@ app.get('/qr', async (req, res) => {
   if (isConnected) return res.send(`
     <html><body style="font-family:sans-serif;text-align:center;padding:60px;background:#f0fdf4">
     <h2 style="color:#16a34a">✅ WhatsApp Connected!</h2>
-    <p style="color:#64748b">You can close this tab and use the app.</p>
+    <p style="color:#64748b">You can close this window and use the app.</p>
     </body></html>`);
 
   if (!qrCodeData) return res.send(`
@@ -74,15 +80,14 @@ app.get('/qr', async (req, res) => {
     </body></html>`);
 
   const imgSrc = await qrcode.toDataURL(qrCodeData);
-  res.send(`
-    <!DOCTYPE html><html>
+  res.send(`<!DOCTYPE html><html>
     <head><title>Scan QR - Maharajothi</title><meta http-equiv="refresh" content="20">
     <style>
-      body { font-family: sans-serif; display:flex; flex-direction:column; align-items:center; padding:40px; background:#f0f4f8; }
-      h2 { color:#1e293b; margin-bottom:6px; }
-      p { color:#64748b; margin-bottom:20px; font-size:.95rem; }
-      img { border:4px solid #6366f1; border-radius:12px; width:280px; }
-      .note { margin-top:14px; font-size:.82rem; color:#94a3b8; }
+      body{font-family:sans-serif;display:flex;flex-direction:column;align-items:center;padding:40px;background:#f0f4f8}
+      h2{color:#1e293b;margin-bottom:6px}
+      p{color:#64748b;margin-bottom:20px;font-size:.95rem}
+      img{border:4px solid #6366f1;border-radius:12px;width:280px}
+      .note{margin-top:14px;font-size:.82rem;color:#94a3b8}
     </style></head>
     <body>
       <h2>📱 Scan with WhatsApp</h2>
@@ -117,5 +122,6 @@ app.post('/send-bulk', async (req, res) => {
   res.json({ success: true, results });
 });
 
-app.listen(3001, () => console.log('🚀 WA Server running at http://localhost:3001'));
+const PORT = 3001;
+app.listen(PORT, () => console.log(`🚀 WA Server running on port ${PORT}`));
 connectWhatsApp();

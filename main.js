@@ -6,12 +6,20 @@ const http = require('http');
 let mainWindow;
 let qrWindow;
 let serverProcess;
+let statusInterval;
 
 // ── Start WhatsApp backend server ────────────────────────────────
 function startServer() {
-  const serverPath = path.join(__dirname, 'server', 'index.js');
-  serverProcess = fork(serverPath, [], { stdio: 'ignore' });
+  const serverPath = app.isPackaged
+    ? path.join(__dirname.replace('app.asar', 'app.asar.unpacked'), 'server', 'index.js')
+    : path.join(__dirname, 'server', 'index.js');
+
+  serverProcess = fork(serverPath, [], {
+    stdio: 'ignore',
+    env: { ...process.env }
+  });
   serverProcess.on('error', err => console.error('Server error:', err));
+  serverProcess.on('exit', code => console.log('Server exited:', code));
 }
 
 // ── Poll server status ───────────────────────────────────────────
@@ -75,7 +83,9 @@ function createWindow() {
   });
 
   // poll WhatsApp status every 3 seconds
-  setInterval(pollStatus, 3000);
+  statusInterval = setInterval(pollStatus, 3000);
+  // initial check after server warms up
+  setTimeout(pollStatus, 2000);
 }
 
 app.whenReady().then(() => {
@@ -84,6 +94,11 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => {
+  if (statusInterval) clearInterval(statusInterval);
   if (serverProcess) serverProcess.kill();
   if (process.platform !== 'darwin') app.quit();
+});
+
+app.on('before-quit', () => {
+  if (serverProcess) serverProcess.kill();
 });

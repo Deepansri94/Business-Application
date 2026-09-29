@@ -29,10 +29,18 @@ jobs:
         run: npm run build
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEBUG: electron-builder
 
-      - name: Upload Installer
+      - name: List dist folder
+        run: dir dist
+        shell: cmd
+
+      - name: Upload Installer (.exe)
         uses: actions/upload-artifact@v4
         with:
           name: Maharajothi-Business-App-Windows
-          path: dist/*.exe
+          path: |
+            dist/*.exe
+            dist/*.msi
+          if-no-files-found: warn
           retention-days: 30
