@@ -1,0 +1,48 @@
+{
+  "name": "maharajothi-business-app",
+  "version": "1.0.0",
+  "description": "Maharajothi Enterprises - Business Management App",
+  "main": "main.js",
+  "author": "Maharajothi Enterprises",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win --x64 --publish never"
+  },
+  "build": {
+    "appId": "com.maharajothi.business",
+    "productName": "Maharajothi Business App",
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Maharajothi Business App"
+    },
+    "files": [
+      "**/*",
+      "!server/auth_info/**",
+      "!.git/**",
+      "!*.bat"
+    ],
+    "extraResources": [
+      {
+        "from": "server/node_modules",
+        "to": "server/node_modules"
+      }
+    ]
+  },
+  "devDependencies": {
+    "electron": "^36.9.5",
+    "electron-builder": "^26.0.12"
+  },
+  "allowScripts": {
+    "electron@36.9.5": true,
+    "electron-winstaller@5.4.0": true
+  }
+}

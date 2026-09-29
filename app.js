@@ -312,21 +312,38 @@ async function checkWAStatus() {
   try {
     const res = await fetch(`${WA_SERVER}/status`);
     const { connected, qrReady } = await res.json();
-    if (connected) {
-      badge.textContent = '🟢 WhatsApp Connected';
-      badge.className = 'wa-badge connected';
-    } else if (qrReady) {
-      badge.textContent = '📱 Scan QR to Connect';
-      badge.className = 'wa-badge qr';
-      badge.onclick = () => window.open(`${WA_SERVER}/qr`, '_blank');
-    } else {
-      badge.textContent = '🔴 Server Offline — Run server/index.js';
-      badge.className = 'wa-badge offline';
-    }
+    updateWABadge(badge, connected, qrReady);
   } catch {
-    badge.textContent = '🔴 Server Offline — Run server/index.js';
+    badge.textContent = '🔴 Server Starting...';
     badge.className = 'wa-badge offline';
   }
+}
+
+function updateWABadge(badge, connected, qrReady) {
+  if (connected) {
+    badge.textContent = '🟢 WhatsApp Connected';
+    badge.className = 'wa-badge connected';
+    badge.onclick = null;
+  } else if (qrReady) {
+    badge.textContent = '📱 Tap to Scan QR & Connect';
+    badge.className = 'wa-badge qr';
+    badge.onclick = () => {
+      if (window.electronAPI) window.electronAPI.openQR();
+      else window.open(`${WA_SERVER}/qr`, '_blank');
+    };
+  } else {
+    badge.textContent = '🔴 Connecting...';
+    badge.className = 'wa-badge offline';
+    badge.onclick = null;
+  }
+}
+
+// listen for real-time status updates from Electron
+if (window.electronAPI) {
+  window.electronAPI.onWAStatus(({ connected, qrReady }) => {
+    const badge = document.getElementById('wa-status-badge');
+    if (badge) updateWABadge(badge, connected, qrReady);
+  });
 }
 
 async function sendWhatsApp() {
