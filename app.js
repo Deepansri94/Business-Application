@@ -879,11 +879,11 @@ function checkForAppUpdate() {
   if (statusEl) { statusEl.innerHTML = ''; statusEl.style.color = ''; }
   if (window.electronAPI) {
     window.electronAPI.checkUpdate();
-    // re-enable button after 10s fallback in case no response
-    setTimeout(() => { if (btn) { btn.disabled = false; btn.textContent = '🔄 Check for Update'; } }, 10000);
+    setTimeout(() => {
+      if (btn && btn.disabled) { btn.disabled = false; btn.textContent = '🔄 Check for Update'; }
+    }, 12000);
   } else {
-    // browser fallback — open releases page directly
-    window.open('https://github.com/Deepansri94/Business-Application/releases/latest', '_blank');
+    if (statusEl) { statusEl.style.color = '#dc2626'; statusEl.innerHTML = '❌ Update check only works in the desktop app.'; }
     if (btn) { btn.disabled = false; btn.textContent = '🔄 Check for Update'; }
   }
 }

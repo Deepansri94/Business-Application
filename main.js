@@ -80,7 +80,7 @@ function createWindow() {
   mainWindow.loadFile('index.html');
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url);
+    if (url.startsWith('http://') || url.startsWith('https://')) shell.openExternal(url);
     return { action: 'deny' };
   });
 
@@ -101,9 +101,14 @@ function send(event, payload) {
 
 function httpsGet(url, headers, callback) {
   const opts = new URL(url);
-  const req = https.get({ hostname: opts.hostname, path: opts.pathname + opts.search, headers }, res => {
-    // follow redirects (GitHub asset downloads redirect to S3)
+  const reqOpts = {
+    hostname: opts.hostname,
+    path: opts.pathname + opts.search,
+    headers
+  };
+  const req = https.get(reqOpts, res => {
     if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+      // follow redirect with no custom headers (S3 rejects Authorization header)
       return httpsGet(res.headers.location, {}, callback);
     }
     callback(null, res);
@@ -195,7 +200,6 @@ function downloadAndOpen(url, versionName, manual) {
 app.whenReady().then(() => {
   startServer();
   setTimeout(createWindow, 1800);
-  setTimeout(checkForUpdate, 5000); // check after app is fully loaded
 });
 
 app.on('window-all-closed', () => {
