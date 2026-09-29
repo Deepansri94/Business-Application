@@ -1,7 +1,8 @@
-const { app, BrowserWindow, shell, ipcMain } = require('electron');
+const { app, BrowserWindow, shell, ipcMain, dialog } = require('electron');
 const path = require('path');
 const { fork } = require('child_process');
 const http = require('http');
+const https = require('https');
 
 let mainWindow;
 let qrWindow;
@@ -88,9 +89,54 @@ function createWindow() {
   setTimeout(pollStatus, 2000);
 }
 
+// ── Auto-update check ───────────────────────────────────────────
+const RELEASES_API = 'https://api.github.com/repos/Deepansri94/Business-Application/releases/latest';
+
+function checkForUpdate() {
+  const req = https.get(RELEASES_API, {
+    headers: {
+      'User-Agent': 'ShopManager-App',
+      'Accept': 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28'
+    }
+  }, res => {
+    let data = '';
+    res.on('data', chunk => data += chunk);
+    res.on('end', () => {
+      try {
+        const release = JSON.parse(data);
+        const tag = release.tag_name || '';
+        if (!tag.startsWith('build-')) return;
+        const remoteCode = parseInt(tag.replace('build-', ''), 10);
+        const localCode = parseInt(app.getVersion().split('.')[1] || '0', 10);
+        if (remoteCode > localCode) {
+          const asset = (release.assets || []).find(a => a.name.endsWith('.exe'));
+          const downloadUrl = asset
+            ? asset.browser_download_url
+            : `https://github.com/Deepansri94/Business-Application/releases/tag/${tag}`;
+          dialog.showMessageBox(mainWindow, {
+            type: 'info',
+            title: 'Update Available',
+            message: `Shop Manager ${release.name} is available.`,
+            detail: 'Click Update to download the latest installer.',
+            buttons: ['Update', 'Later'],
+            defaultId: 0,
+            cancelId: 1
+          }).then(({ response }) => {
+            if (response === 0) shell.openExternal(downloadUrl);
+          });
+        }
+      } catch {}
+    });
+  });
+  req.on('error', () => {}); // silently skip if no network
+  req.end();
+}
+
 app.whenReady().then(() => {
   startServer();
   setTimeout(createWindow, 1800);
+  setTimeout(checkForUpdate, 5000); // check after app is fully loaded
 });
 
 app.on('window-all-closed', () => {
