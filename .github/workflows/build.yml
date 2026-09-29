@@ -81,10 +81,10 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: build-${{ env.VERSION_CODE }}
+          RELEASE_NAME: Shop Manager ${{ env.VERSION_NAME }}
         run: |
           set -e
-          TAG="build-${VERSION_CODE}"
-          RELEASE_NAME="Shop Manager ${VERSION_NAME}"
 
           # Delete existing release + tag if re-running same build number
           EXISTING_ID=$(curl -sS \
@@ -111,15 +111,15 @@ jobs:
 
           # Create release
           PAYLOAD=$(python3 -c "
-          import json, os
-          print(json.dumps({
-            'tag_name': os.environ['TAG'],
-            'name': os.environ['RELEASE_NAME'],
-            'body': 'Automated build from commit ${GITHUB_SHA::12}',
-            'draft': False,
-            'prerelease': False
-          }))
-          " TAG="$TAG" RELEASE_NAME="$RELEASE_NAME")
+import json, os
+print(json.dumps({
+  'tag_name': os.environ['TAG'],
+  'name': os.environ['RELEASE_NAME'],
+  'body': 'Automated build',
+  'draft': False,
+  'prerelease': False
+}))
+")
 
           RELEASE_RESPONSE=$(curl -sS -X POST \
             -H "Authorization: Bearer ${GH_TOKEN}" \
@@ -132,10 +132,10 @@ jobs:
           echo "Release response: $RELEASE_RESPONSE"
 
           UPLOAD_URL=$(echo "$RELEASE_RESPONSE" | python3 -c "
-          import sys, json
-          data = json.load(sys.stdin)
-          print(data.get('upload_url','').split('{')[0])
-          ")
+import sys, json
+data = json.load(sys.stdin)
+print(data.get('upload_url','').split('{')[0])
+")
 
           if [ -z "$UPLOAD_URL" ]; then
             echo "ERROR: Could not extract upload_url"
