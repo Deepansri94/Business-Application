@@ -66,7 +66,7 @@ function createWindow() {
     height: 800,
     minWidth: 960,
     minHeight: 600,
-    title: 'மகரஜோதி - Maharajothi Enterprises',
+    title: 'Shop Manager',
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,

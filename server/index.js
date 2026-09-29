@@ -17,7 +17,7 @@ let qrCodeData = null;
 let isConnected = false;
 
 // persist auth in user home so it survives app updates
-const AUTH_DIR = path.join(os.homedir(), '.maharajothi', 'auth_info');
+const AUTH_DIR = path.join(os.homedir(), '.shopmanager', 'auth_info');
 if (!fs.existsSync(AUTH_DIR)) fs.mkdirSync(AUTH_DIR, { recursive: true });
 
 async function connectWhatsApp() {
@@ -38,7 +38,7 @@ async function connectWhatsApp() {
       auth: state,
       logger,
       printQRInTerminal: false,
-      browser: ['Maharajothi Enterprises', 'Chrome', '1.0.0']
+      browser: ['Shop Manager', 'Chrome', '1.0.0']
     });
 
     sock.ev.on('creds.update', saveCreds);
@@ -84,7 +84,7 @@ app.get('/qr', async (req, res) => {
 
   const imgSrc = await qrcode.toDataURL(qrCodeData);
   res.send(`<!DOCTYPE html><html>
-    <head><title>Scan QR - Maharajothi</title><meta http-equiv="refresh" content="20">
+    <head><title>Scan QR - Shop Manager</title><meta http-equiv="refresh" content="20">
     <style>
       body{font-family:sans-serif;display:flex;flex-direction:column;align-items:center;padding:40px;background:#f0f4f8}
       h2{color:#1e293b;margin-bottom:6px}

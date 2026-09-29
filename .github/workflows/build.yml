@@ -38,7 +38,7 @@ jobs:
       - name: Upload Installer (.exe)
         uses: actions/upload-artifact@v4
         with:
-          name: Maharajothi-Business-App-Windows
+          name: Shop-Manager-Windows
           path: |
             dist/*.exe
             dist/*.msi

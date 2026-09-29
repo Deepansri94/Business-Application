@@ -22,13 +22,13 @@ Kindly settle the amount at your earliest convenience.
 Thank you! 🙏`;
 
 let settings = JSON.parse(localStorage.getItem('settings') || JSON.stringify({
-  nameTamil: 'மகரஜோதி',
-  nameEnglish: 'Maharajothi Enterprises',
+  nameTamil: '',
+  nameEnglish: '',
   phone: '',
-  addr1: '2/1, East Street, Pudanchandai Road, Dhathathiripuram',
+  addr1: '',
   addr2: '',
-  city: 'Namakkal',
-  state: 'Tamil Nadu - 637018',
+  city: '',
+  state: '',
   upi: '',
   gst: '',
   footer: 'Thank you for your business!',
@@ -878,7 +878,7 @@ function saveSettings() {
   localStorage.setItem('settings', JSON.stringify(settings));
 
   // update sidebar logo live
-  document.querySelector('.shop-name-tamil').textContent = '🖨️ ' + settings.nameTamil;
+  document.querySelector('.shop-name-tamil').textContent = settings.nameTamil || '🖨️ Shop';
   document.querySelector('.shop-name-sub').textContent   = settings.nameEnglish;
 
   renderSettingsPreview();
@@ -956,7 +956,7 @@ function applyLogo(base64) {
 }
 
 function applySettingsToUI() {
-  document.querySelector('.shop-name-tamil').textContent = '🖨️ ' + settings.nameTamil;
+  document.querySelector('.shop-name-tamil').textContent = settings.nameTamil || '🖨️ Shop';
   document.querySelector('.shop-name-sub').textContent   = settings.nameEnglish;
   loadLogo();
 }
