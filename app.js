@@ -634,7 +634,10 @@ function deleteTxn(id) {
   if (!confirm('Delete this transaction?')) return;
   transactions = transactions.filter(t => t.id !== id);
   save('transactions', transactions);
+  kataEntries = kataEntries.filter(k => k.txnId !== id);
+  save('kataEntries', kataEntries);
   renderTransactions();
+  renderCustomers();
   renderDashboard();
   toast('Transaction deleted');
 }
@@ -771,6 +774,22 @@ if (window.electronAPI) {
     const badge = document.getElementById('wa-status-badge');
     if (badge) updateWABadge(badge, connected, qrReady);
   });
+  window.electronAPI.onUpdateResult(({ status, version, url }) => {
+    const btn = document.getElementById('check-update-btn');
+    const statusEl = document.getElementById('update-status');
+    if (btn) { btn.disabled = false; btn.textContent = '🔄 Check for Update'; }
+    if (!statusEl) return;
+    if (status === 'available') {
+      statusEl.style.color = '#2563eb';
+      statusEl.innerHTML = `🆕 <strong>${version}</strong> is available! <a href="${url}" target="_blank" style="color:#2563eb;text-decoration:underline">Download now</a>`;
+    } else if (status === 'up-to-date') {
+      statusEl.style.color = '#16a34a';
+      statusEl.innerHTML = `✅ You're already on the latest version.`;
+    } else {
+      statusEl.style.color = '#dc2626';
+      statusEl.innerHTML = `❌ Could not check for updates. Check your internet connection.`;
+    }
+  });
 }
 
 async function sendWhatsApp() {
@@ -840,6 +859,22 @@ function showSendResults(log, results, total) {
   });
   const sentCount = results.filter(r => r.status === 'sent').length;
   toast(`✅ Sent to ${sentCount}/${total} customers!`);
+}
+
+function checkForAppUpdate() {
+  const btn = document.getElementById('check-update-btn');
+  const statusEl = document.getElementById('update-status');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Checking...'; }
+  if (statusEl) { statusEl.innerHTML = ''; statusEl.style.color = ''; }
+  if (window.electronAPI) {
+    window.electronAPI.checkUpdate();
+    // re-enable button after 10s fallback in case no response
+    setTimeout(() => { if (btn) { btn.disabled = false; btn.textContent = '🔄 Check for Update'; } }, 10000);
+  } else {
+    // browser fallback — open releases page directly
+    window.open('https://github.com/Deepansri94/Business-Application/releases/latest', '_blank');
+    if (btn) { btn.disabled = false; btn.textContent = '🔄 Check for Update'; }
+  }
 }
 
 // ── Init ─────────────────────────────────────────────────────────

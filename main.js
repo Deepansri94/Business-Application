@@ -59,6 +59,7 @@ function openQRWindow() {
 }
 
 ipcMain.on('open-qr', () => openQRWindow());
+ipcMain.handle('check-update', () => checkForUpdate(true));
 
 // ── Main Window ──────────────────────────────────────────────────
 function createWindow() {
@@ -92,7 +93,7 @@ function createWindow() {
 // ── Auto-update check ───────────────────────────────────────────
 const RELEASES_API = 'https://api.github.com/repos/Deepansri94/Business-Application/releases/latest';
 
-function checkForUpdate() {
+function checkForUpdate(manual = false) {
   const req = https.get(RELEASES_API, {
     headers: {
       'User-Agent': 'ShopManager-App',
@@ -106,7 +107,10 @@ function checkForUpdate() {
       try {
         const release = JSON.parse(data);
         const tag = release.tag_name || '';
-        if (!tag.startsWith('build-')) return;
+        if (!tag.startsWith('build-')) {
+          if (manual && mainWindow) mainWindow.webContents.send('update-result', { status: 'up-to-date' });
+          return;
+        }
         const remoteCode = parseInt(tag.replace('build-', ''), 10);
         const localCode = parseInt(app.getVersion().split('.')[1] || '0', 10);
         if (remoteCode > localCode) {
@@ -114,22 +118,33 @@ function checkForUpdate() {
           const downloadUrl = asset
             ? asset.browser_download_url
             : `https://github.com/Deepansri94/Business-Application/releases/tag/${tag}`;
-          dialog.showMessageBox(mainWindow, {
-            type: 'info',
-            title: 'Update Available',
-            message: `Shop Manager ${release.name} is available.`,
-            detail: 'Click Update to download the latest installer.',
-            buttons: ['Update', 'Later'],
-            defaultId: 0,
-            cancelId: 1
-          }).then(({ response }) => {
-            if (response === 0) shell.openExternal(downloadUrl);
-          });
+          if (manual) {
+            // send to renderer to show inline status + prompt
+            if (mainWindow) mainWindow.webContents.send('update-result', { status: 'available', version: release.name, url: downloadUrl });
+          } else {
+            dialog.showMessageBox(mainWindow, {
+              type: 'info',
+              title: 'Update Available',
+              message: `Shop Manager ${release.name} is available.`,
+              detail: 'Click Update to download the latest installer.',
+              buttons: ['Update', 'Later'],
+              defaultId: 0,
+              cancelId: 1
+            }).then(({ response }) => {
+              if (response === 0) shell.openExternal(downloadUrl);
+            });
+          }
+        } else {
+          if (manual && mainWindow) mainWindow.webContents.send('update-result', { status: 'up-to-date' });
         }
-      } catch {}
+      } catch {
+        if (manual && mainWindow) mainWindow.webContents.send('update-result', { status: 'error' });
+      }
     });
   });
-  req.on('error', () => {}); // silently skip if no network
+  req.on('error', () => {
+    if (manual && mainWindow) mainWindow.webContents.send('update-result', { status: 'error' });
+  });
   req.end();
 }
 
