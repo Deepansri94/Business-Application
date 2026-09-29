@@ -12,6 +12,7 @@
 <body>
   <nav class="sidebar">
     <div class="logo">
+      <div class="logo-img-wrap" id="sidebar-logo-wrap"></div>
       <span class="shop-name-tamil">🖨️ மகரஜோதி</span>
       <span class="shop-name-sub">Maharajothi Enterprises</span>
     </div>
@@ -20,7 +21,9 @@
       <li class="nav-item" data-page="customers">👥 Customers</li>
       <li class="nav-item" data-page="transactions">💰 Transactions</li>
       <li class="nav-item" data-page="billing">🧾 Billing</li>
+      <li class="nav-item" data-page="products">📦 Products</li>
       <li class="nav-item" data-page="messages">📢 Messages</li>
+      <li class="nav-item" data-page="settings">⚙️ Settings</li>
     </ul>
   </nav>
 
@@ -33,10 +36,11 @@
         <div class="stat-card"><span class="stat-label">Today's Revenue</span><span class="stat-value" id="stat-today">₹0</span></div>
         <div class="stat-card"><span class="stat-label">Total Transactions</span><span class="stat-value" id="stat-txns">0</span></div>
         <div class="stat-card"><span class="stat-label">Total Revenue</span><span class="stat-value" id="stat-revenue">₹0</span></div>
+        <div class="stat-card"><span class="stat-label">⚠️ Total Unpaid</span><span class="stat-value" id="stat-unpaid" style="color:#dc2626">₹0</span></div>
       </div>
       <h3>Recent Transactions</h3>
       <table class="data-table" id="recent-txns-table">
-        <thead><tr><th>Date</th><th>Customer</th><th>Items</th><th>Amount</th></tr></thead>
+        <thead><tr><th>Date</th><th>Customer</th><th>Items</th><th>Amount</th><th>Status</th></tr></thead>
         <tbody id="recent-txns-body"></tbody>
       </table>
     </section>
@@ -46,7 +50,7 @@
       <h2>Customers</h2>
       <button class="btn btn-primary" onclick="openModal('customer-modal')">+ Add Customer</button>
       <table class="data-table" id="customers-table">
-        <thead><tr><th>Name</th><th>Phone</th><th>Email</th><th>Actions</th></tr></thead>
+        <thead><tr><th>Name</th><th>Phone</th><th>Email</th><th>Unpaid</th><th>Actions</th></tr></thead>
         <tbody id="customers-body"></tbody>
       </table>
     </section>
@@ -54,11 +58,28 @@
     <!-- Transactions -->
     <section id="transactions" class="page">
       <h2>Transactions</h2>
-      <button class="btn btn-primary" onclick="openModal('txn-modal')">+ New Transaction</button>
+      <div class="txn-toolbar">
+        <button class="btn btn-primary" onclick="openModal('txn-modal')">+ New Transaction</button>
+        <div class="txn-filters">
+          <button class="filter-btn active" onclick="setTxnFilter('all', this)">All</button>
+          <button class="filter-btn" onclick="setTxnFilter('this_month', this)">This Month</button>
+          <button class="filter-btn" onclick="setTxnFilter('last_month', this)">Last Month</button>
+          <button class="filter-btn" onclick="setTxnFilter('custom', this)">Custom</button>
+        </div>
+        <div id="txn-date-range" class="hidden txn-date-range">
+          <input type="date" id="txn-from-date" />
+          <span>to</span>
+          <input type="date" id="txn-to-date" />
+          <button class="btn btn-secondary" style="padding:6px 12px;font-size:.85rem" onclick="applyCustomFilter()">Apply</button>
+        </div>
+        <button class="btn btn-outline" onclick="downloadTransactions()">⬇️ Download CSV</button>
+      </div>
+      <div id="txn-summary" class="txn-summary"></div>
       <table class="data-table" id="txns-table">
-        <thead><tr><th>Date</th><th>Customer</th><th>Items</th><th>Amount</th><th>Actions</th></tr></thead>
+        <thead><tr><th>Date</th><th>Customer</th><th>Items</th><th>Amount</th><th>Status</th><th>Actions</th></tr></thead>
         <tbody id="txns-body"></tbody>
       </table>
+      <div class="pagination" id="txn-pagination"></div>
     </section>
 
     <!-- Billing -->
@@ -82,6 +103,14 @@
           </select>
         </div>
         <div class="form-row">
+          <label>Payment Status</label>
+          <div class="paid-toggle-row">
+            <button type="button" class="paid-toggle active" id="bill-paid-btn" onclick="setBillPaidStatus('paid')">✅ Paid</button>
+            <button type="button" class="paid-toggle unpaid" id="bill-unpaid-btn" onclick="setBillPaidStatus('unpaid')">❌ Unpaid</button>
+          </div>
+          <input type="hidden" id="bill-paid-status" value="paid" />
+        </div>
+        <div class="form-row">
           <label>Notes</label>
           <input type="text" id="bill-notes" placeholder="Optional notes" />
         </div>
@@ -91,6 +120,69 @@
         </div>
       </div>
       <div id="bill-preview" class="bill-preview hidden"></div>
+    </section>
+
+    <!-- Products -->
+    <section id="products" class="page">
+      <h2>Products &amp; Services</h2>
+      <button class="btn btn-primary" onclick="openModal('product-modal')">+ Add Product</button>
+      <table class="data-table" id="products-table">
+        <thead><tr><th>Name</th><th>Category</th><th>Price (₹)</th><th>Actions</th></tr></thead>
+        <tbody id="products-body"></tbody>
+      </table>
+    </section>
+
+    <!-- Settings -->
+    <section id="settings" class="page">
+      <h2>⚙️ Business Settings</h2>
+      <div class="card settings-card">
+        <h3>Shop Information</h3>
+        <div class="form-row">
+          <label>Shop Logo</label>
+          <div class="logo-upload-row">
+            <img id="s-logo-preview" class="logo-preview" src="" alt="Logo" />
+            <div>
+              <input type="file" id="s-logo-input" accept="image/*" onchange="previewLogo(this)" />
+              <div style="font-size:.78rem;color:#94a3b8;margin-top:4px">Recommended: square image, PNG/JPG</div>
+              <button type="button" class="btn btn-secondary" style="margin-top:8px;font-size:.8rem;padding:6px 12px" onclick="removeLogo()">✕ Remove Logo</button>
+            </div>
+          </div>
+        </div>
+        <div class="form-row"><label>Shop Name (Tamil)</label><input type="text" id="s-name-tamil" placeholder="e.g. மகரஜோதி" /></div>
+        <div class="form-row"><label>Shop Name (English)</label><input type="text" id="s-name-english" placeholder="e.g. Maharajothi Enterprises" /></div>
+        <div class="form-row"><label>Phone Number</label><input type="tel" id="s-phone" placeholder="10-digit mobile" /></div>
+        <div class="form-row"><label>Address Line 1</label><input type="text" id="s-addr1" placeholder="Door No, Street" /></div>
+        <div class="form-row"><label>Address Line 2</label><input type="text" id="s-addr2" placeholder="Area, Landmark" /></div>
+        <div class="form-row"><label>City</label><input type="text" id="s-city" placeholder="e.g. Namakkal" /></div>
+        <div class="form-row"><label>State &amp; PIN</label><input type="text" id="s-state" placeholder="e.g. Tamil Nadu - 637018" /></div>
+        <h3 style="margin-top:20px">Payment Details</h3>
+        <div class="form-row"><label>UPI ID</label><input type="text" id="s-upi" placeholder="e.g. shopname@upi" /></div>
+        <div class="form-row"><label>GSTIN <span style="color:#94a3b8;font-weight:400">(optional)</span></label><input type="text" id="s-gst" placeholder="GST Number" /></div>
+        <h3 style="margin-top:20px">Bill Footer Message</h3>
+        <div class="form-row"><label>Thank You Message</label><input type="text" id="s-footer" placeholder="e.g. Thank you for your business!" /></div>
+        <h3 style="margin-top:20px">Payment Reminder Template</h3>
+        <div class="form-row">
+          <label>Reminder Message <span style="color:#94a3b8;font-weight:400">— use <code>{name}</code>, <code>{items}</code>, <code>{total}</code>, <code>{shop}</code></span></label>
+          <textarea id="s-reminder" rows="7"></textarea>
+        </div>
+        <div class="template-tags">
+          <span onclick="insertTag('{name}')">{name}</span>
+          <span onclick="insertTag('{items}')">{items}</span>
+          <span onclick="insertTag('{total}')">{total}</span>
+          <span onclick="insertTag('{shop}')">{shop}</span>
+          <span onclick="insertTag('{phone}')">{phone}</span>
+          <span onclick="insertTag('{upi}')">{upi}</span>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="saveSettings()">💾 Save Settings</button>
+        </div>
+        <div id="settings-saved" class="hidden" style="margin-top:12px;color:#16a34a;font-weight:600">✅ Settings saved successfully!</div>
+      </div>
+
+      <div class="card settings-card" style="margin-top:20px">
+        <h3>Bill Preview</h3>
+        <div id="settings-bill-preview" class="settings-preview"></div>
+      </div>
     </section>
 
     <!-- Messages -->
@@ -113,6 +205,10 @@
         <div class="form-row">
           <label>Message / Offer</label>
           <textarea id="msg-text" rows="5" placeholder="e.g. 🎉 Special offer! Get 20% off on all Xerox copies this week. Visit us today!"></textarea>
+        </div>
+        <div class="form-row">
+          <label>Attachment <span style="color:#94a3b8;font-weight:400">(Image or PDF, optional)</span></label>
+          <input type="file" id="msg-attachment" accept="image/*,.pdf" />
         </div>
         <div class="btn-row">
           <button class="btn btn-whatsapp" onclick="sendWhatsApp()">💬 Send via WhatsApp</button>
@@ -151,9 +247,73 @@
       <div class="form-row"><label>Payment</label>
         <select id="txn-payment"><option>Cash</option><option>UPI</option><option>Card</option></select>
       </div>
+      <div class="form-row"><label>Payment Status</label>
+        <div class="paid-toggle-row">
+          <button type="button" class="paid-toggle active" id="txn-paid-btn" onclick="setTxnPaidStatus('paid')">✅ Paid</button>
+          <button type="button" class="paid-toggle unpaid" id="txn-unpaid-btn" onclick="setTxnPaidStatus('unpaid')">❌ Unpaid</button>
+        </div>
+        <input type="hidden" id="txn-paid-status" value="paid" />
+      </div>
       <div class="btn-row">
         <button class="btn btn-primary" onclick="saveTransaction()">Save Transaction</button>
         <button class="btn btn-outline" onclick="closeModal('txn-modal')">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Product Modal -->
+  <div class="modal-overlay hidden" id="product-modal">
+    <div class="modal">
+      <h3 id="product-modal-title">Add Product</h3>
+      <input type="hidden" id="edit-product-id" />
+      <div class="form-row"><label>Product / Service Name *</label><input type="text" id="p-name" placeholder="e.g. Xerox B&W" /></div>
+      <div class="form-row"><label>Category</label>
+        <select id="p-category">
+          <option>Xerox</option>
+          <option>Printout</option>
+          <option>Binding</option>
+          <option>Stationery</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div class="form-row"><label>Price per Unit (₹) *</label><input type="number" id="p-price" min="0" step="0.5" placeholder="0.00" /></div>
+      <div class="form-row"><label>Unit</label><input type="text" id="p-unit" placeholder="e.g. per page, per piece" /></div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="saveProduct()">Save</button>
+        <button class="btn btn-outline" onclick="closeModal('product-modal')">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reminder Preview Modal -->
+  <div class="modal-overlay hidden" id="reminder-modal">
+    <div class="modal modal-wide">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <h3>📲 Payment Reminder</h3>
+        <button class="btn-danger" onclick="closeModal('reminder-modal')">✕</button>
+      </div>
+      <div class="form-row">
+        <label>Edit message before sending</label>
+        <textarea id="reminder-msg-text" rows="10" style="font-size:.88rem"></textarea>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-whatsapp" onclick="confirmSendReminder()">💬 Send Reminder</button>
+        <button class="btn btn-outline" onclick="closeModal('reminder-modal')">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Kata Book Modal -->
+  <div class="modal-overlay hidden" id="kata-modal">
+    <div class="modal modal-wide">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h3 id="kata-modal-title">📒 கட்டா புத்தகம் (Kata Book)</h3>
+        <button class="btn-danger" onclick="closeModal('kata-modal')">✕</button>
+      </div>
+      <div id="kata-entries"></div>
+      <div class="kata-total-row">
+        <span>Total Unpaid:</span>
+        <span id="kata-total" class="kata-total-amt">₹0.00</span>
       </div>
     </div>
   </div>
