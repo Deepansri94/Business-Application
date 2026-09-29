@@ -85,7 +85,7 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" \
-            | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('id',''))" 2>/dev/null || true)
+            | jq -r '.id // empty')
 
           if [ -n "$EXISTING_ID" ]; then
             curl -sS -X DELETE \
@@ -100,34 +100,18 @@ jobs:
               "https://api.github.com/repos/${GITHUB_REPOSITORY}/git/refs/tags/${TAG}"
           fi
 
-          PAYLOAD=$(python3 <<PYEOF
-import json, os
-print(json.dumps({
-  'tag_name': os.environ['TAG'],
-  'name': os.environ['RELEASE_NAME'],
-  'body': 'Automated build',
-  'draft': False,
-  'prerelease': False
-}))
-PYEOF
-)
-
           RELEASE_RESPONSE=$(curl -sS -X POST \
             -H "Authorization: Bearer ${GH_TOKEN}" \
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             -H "Content-Type: application/json" \
             "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases" \
-            -d "$PAYLOAD")
+            -d "$(jq -n --arg tag "${TAG}" --arg name "${RELEASE_NAME}" \
+              '{tag_name:$tag,name:$name,body:"Automated build",draft:false,prerelease:false}')")
 
           echo "Release response: $RELEASE_RESPONSE"
 
-          UPLOAD_URL=$(echo "$RELEASE_RESPONSE" | python3 <<PYEOF
-import sys, json
-data = json.load(sys.stdin)
-print(data.get('upload_url','').split('{')[0])
-PYEOF
-)
+          UPLOAD_URL=$(echo "$RELEASE_RESPONSE" | jq -r '.upload_url' | sed 's/{.*//')
 
           if [ -z "$UPLOAD_URL" ]; then
             echo "ERROR: Could not extract upload_url"
