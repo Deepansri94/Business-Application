@@ -138,7 +138,7 @@ function checkForUpdate(manual = false) {
           return;
         }
         const remoteCode = parseInt(tag.replace('build-', ''), 10);
-        const localCode = parseInt(app.getVersion().split('.')[1] || '0', 10);
+        const localCode = parseInt(app.getVersion().split('.')[2] || '0', 10);
         if (remoteCode > localCode) {
           const asset = (release.assets || []).find(a => a.name.endsWith('.exe'));
           if (!asset) {
