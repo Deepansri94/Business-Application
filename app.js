@@ -774,17 +774,28 @@ if (window.electronAPI) {
     const badge = document.getElementById('wa-status-badge');
     if (badge) updateWABadge(badge, connected, qrReady);
   });
-  window.electronAPI.onUpdateResult(({ status, version, url }) => {
+  window.electronAPI.onUpdateResult(({ status, version }) => {
     const btn = document.getElementById('check-update-btn');
     const statusEl = document.getElementById('update-status');
     if (btn) { btn.disabled = false; btn.textContent = '🔄 Check for Update'; }
     if (!statusEl) return;
     if (status === 'available') {
       statusEl.style.color = '#2563eb';
-      statusEl.innerHTML = `🆕 <strong>${version}</strong> is available! <a href="${url}" target="_blank" style="color:#2563eb;text-decoration:underline">Download now</a>`;
+      statusEl.innerHTML = `🆕 <strong>${version}</strong> is available. Preparing download...`;
+    } else if (status === 'downloading') {
+      statusEl.style.color = '#d97706';
+      statusEl.innerHTML = `⏳ Downloading update... Please wait.`;
+      if (btn) btn.disabled = true;
+    } else if (status === 'done') {
+      statusEl.style.color = '#16a34a';
+      statusEl.innerHTML = `✅ Download complete! The installer has opened — follow the steps to update.`;
+      if (btn) btn.disabled = false;
     } else if (status === 'up-to-date') {
       statusEl.style.color = '#16a34a';
       statusEl.innerHTML = `✅ You're already on the latest version.`;
+    } else if (status === 'cancelled') {
+      statusEl.style.color = '#64748b';
+      statusEl.innerHTML = `Update skipped.`;
     } else {
       statusEl.style.color = '#dc2626';
       statusEl.innerHTML = `❌ Could not check for updates. Check your internet connection.`;
