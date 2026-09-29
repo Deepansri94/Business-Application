@@ -36,13 +36,7 @@ jobs:
       - name: Set version in package.json
         shell: bash
         run: |
-          node -e "
-          const fs = require('fs');
-          const pkg = JSON.parse(fs.readFileSync('package.json','utf8'));
-          pkg.version = '${{ env.VERSION_NAME }}';
-          fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));
-          console.log('Version set to', pkg.version);
-          "
+          node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));p.version='${{ env.VERSION_NAME }}';fs.writeFileSync('package.json',JSON.stringify(p,null,2));console.log('Version:',p.version);"
 
       - name: Build Windows Installer
         run: npm run build
@@ -86,7 +80,6 @@ jobs:
         run: |
           set -e
 
-          # Delete existing release + tag if re-running same build number
           EXISTING_ID=$(curl -sS \
             -H "Authorization: Bearer ${GH_TOKEN}" \
             -H "Accept: application/vnd.github+json" \
@@ -95,7 +88,6 @@ jobs:
             | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('id',''))" 2>/dev/null || true)
 
           if [ -n "$EXISTING_ID" ]; then
-            echo "Deleting existing release id=${EXISTING_ID} for tag ${TAG}"
             curl -sS -X DELETE \
               -H "Authorization: Bearer ${GH_TOKEN}" \
               -H "Accept: application/vnd.github+json" \
@@ -106,11 +98,9 @@ jobs:
               -H "Accept: application/vnd.github+json" \
               -H "X-GitHub-Api-Version: 2022-11-28" \
               "https://api.github.com/repos/${GITHUB_REPOSITORY}/git/refs/tags/${TAG}"
-            echo "Existing release and tag deleted."
           fi
 
-          # Create release
-          PAYLOAD=$(python3 -c "
+          PAYLOAD=$(python3 <<PYEOF
 import json, os
 print(json.dumps({
   'tag_name': os.environ['TAG'],
@@ -119,7 +109,8 @@ print(json.dumps({
   'draft': False,
   'prerelease': False
 }))
-")
+PYEOF
+)
 
           RELEASE_RESPONSE=$(curl -sS -X POST \
             -H "Authorization: Bearer ${GH_TOKEN}" \
@@ -131,19 +122,18 @@ print(json.dumps({
 
           echo "Release response: $RELEASE_RESPONSE"
 
-          UPLOAD_URL=$(echo "$RELEASE_RESPONSE" | python3 -c "
+          UPLOAD_URL=$(echo "$RELEASE_RESPONSE" | python3 <<PYEOF
 import sys, json
 data = json.load(sys.stdin)
 print(data.get('upload_url','').split('{')[0])
-")
+PYEOF
+)
 
           if [ -z "$UPLOAD_URL" ]; then
             echo "ERROR: Could not extract upload_url"
             exit 1
           fi
-          echo "Upload URL: $UPLOAD_URL"
 
-          # Upload EXE asset
           curl -sS -X POST \
             -H "Authorization: Bearer ${GH_TOKEN}" \
             -H "Accept: application/vnd.github+json" \
@@ -151,4 +141,4 @@ print(data.get('upload_url','').split('{')[0])
             "${UPLOAD_URL}?name=ShopManager-Setup.exe" \
             --data-binary @release/ShopManager-Setup.exe
 
-          echo "Release ${RELEASE_NAME} published with EXE asset."
+          echo "Release ${RELEASE_NAME} published."
