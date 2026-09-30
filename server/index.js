@@ -158,5 +158,5 @@ app.post('/send-bulk-media', upload.single('attachment'), async (req, res) => {
 });
 
 const PORT = 3001;
-app.listen(PORT, () => console.log(`🚀 WA Server running on port ${PORT}`));
+app.listen(PORT, '127.0.0.1', () => console.log(`WA Server running on port ${PORT}`));
 connectWhatsApp();
