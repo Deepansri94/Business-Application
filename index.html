@@ -116,6 +116,7 @@
         </div>
         <div class="btn-row">
           <button class="btn btn-primary" onclick="generateBill()">Generate & Save Bill</button>
+          <button class="btn btn-outline" onclick="saveBillAsPDF()">📄 Save as PDF</button>
           <button class="btn btn-outline" onclick="printBill()">🖨️ Print Bill</button>
         </div>
       </div>
@@ -180,6 +181,14 @@
       </div>
 
       <div class="card settings-card" style="margin-top:20px">
+        <h3>WhatsApp Sync</h3>
+        <p style="color:#64748b;font-size:.88rem;margin-bottom:14px">Connect WhatsApp or scan the QR code again if the app asks you to link your device.</p>
+        <div class="btn-row">
+          <button class="btn btn-whatsapp" onclick="openWhatsAppSync()">🔄 Sync WhatsApp / Scan QR</button>
+        </div>
+      </div>
+
+      <div class="card settings-card" style="margin-top:20px">
         <h3>App Update</h3>
         <p style="color:#64748b;font-size:.88rem;margin-bottom:14px">Check if a newer version of Shop Manager is available and install it.</p>
         <div class="btn-row">
@@ -198,6 +207,9 @@
     <section id="messages" class="page">
       <h2>📱 Send WhatsApp Messages</h2>
       <div id="wa-status-badge" class="wa-badge offline" onclick="checkWAStatus()">🔴 Checking server...</div>
+      <div class="btn-row" style="margin-bottom:16px">
+        <button class="btn btn-whatsapp" onclick="openWhatsAppSync()">🔄 Sync WhatsApp / Scan QR</button>
+      </div>
       <div class="card msg-form">
         <div class="wa-info">💡 Messages are sent silently in the background. Make sure WhatsApp is connected before sending.</div>
         <div class="form-row">

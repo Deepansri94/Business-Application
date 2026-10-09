@@ -29,6 +29,7 @@ A desktop business management application for Xerox & Stationery shops. Manage c
 - Generate bills with product line items
 - Paid / Unpaid toggle
 - Bill preview with **logo watermark**
+- Save generated bills as **PDF**
 - 🖨️ Print bill directly from the app
 - Auto-saves to Transactions
 
@@ -42,6 +43,7 @@ A desktop business management application for Xerox & Stationery shops. Manage c
 - Send to **All Customers** or **Select specific customers**
 - Attach **Image or PDF** along with message
 - Real-time connection status badge (🟢 Connected / 📱 Scan QR)
+- **Sync WhatsApp / Scan QR** buttons on both Messages and Settings
 
 ### 📢 Payment Reminders
 - One-click reminder from Customers page
@@ -113,15 +115,14 @@ npm start
 
 ---
 
-## 📲 WhatsApp Setup (First Time Only)
+## 📲 WhatsApp Setup
 
-1. Open the app → go to **Messages** tab
-2. Click the **📱 Tap to Scan QR & Connect** badge
-3. On your phone: **WhatsApp → ⋮ Menu → Linked Devices → Link a Device**
-4. Scan the QR code shown in the popup
-5. Badge turns 🟢 **WhatsApp Connected**
+1. Open **Messages** or **Settings** and click **🔄 Sync WhatsApp / Scan QR**
+2. On your phone: **WhatsApp → ⋮ Menu → Linked Devices → Link a Device**
+3. Scan the QR code shown in the popup
+4. Badge turns 🟢 **WhatsApp Connected**
 
-> ✅ QR scan is a **one-time setup**. Auth is saved locally and reconnects automatically on next launch.
+> ✅ Auth is saved locally and reconnects automatically on next launch. Use the sync button whenever the app needs you to link the device again.
 
 ---
 

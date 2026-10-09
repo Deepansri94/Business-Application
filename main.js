@@ -60,6 +60,35 @@ function openQRWindow() {
 
 ipcMain.on('open-qr', () => openQRWindow());
 ipcMain.handle('check-update', () => checkForUpdate(true));
+ipcMain.handle('save-bill-pdf', async (event, { html, billNo }) => {
+  if (event.sender !== mainWindow?.webContents) throw new Error('PDF export is only available from the main app window');
+  if (typeof html !== 'string' || html.length > 5_000_000) throw new Error('Invalid bill content');
+
+  const safeBillNo = typeof billNo === 'string' ? billNo.replace(/[<>:"/\\|?*]/g, '-') : 'Bill';
+  const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
+    title: 'Save Bill as PDF',
+    defaultPath: `${safeBillNo}.pdf`,
+    filters: [{ name: 'PDF', extensions: ['pdf'] }]
+  });
+  if (canceled || !filePath) return { canceled: true };
+
+  const pdfWindow = new BrowserWindow({
+    show: false,
+    webPreferences: { nodeIntegration: false, contextIsolation: true }
+  });
+  try {
+    await pdfWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+    const pdf = await pdfWindow.webContents.printToPDF({
+      pageSize: 'A4',
+      printBackground: true,
+      marginsType: 0
+    });
+    await fs.promises.writeFile(filePath, pdf);
+    return { canceled: false, filePath };
+  } finally {
+    pdfWindow.close();
+  }
+});
 
 // ── Main Window ──────────────────────────────────────────────────
 function createWindow() {

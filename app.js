@@ -712,10 +712,46 @@ function renderBillPreview({ billNo, date, cust, items, total, payment, paidStat
     <div style="text-align:center;margin-top:12px;font-size:.82rem;color:#64748b">${settings.footer}</div>
     </div>`;
 }
+function getBillPrintHTML() {
+  const bill = lastBill;
+  const preview = document.getElementById('bill-preview');
+  return `<html><head><meta charset="utf-8"><title>${bill.billNo}</title><style>
+    @page{size:A4;margin:16mm}
+    body{font-family:sans-serif;padding:24px;max-width:640px;margin:auto;color:#1e293b}
+    table{width:100%;border-collapse:collapse;margin:12px 0}
+    th,td{border:1px solid #ccc;padding:6px 8px;font-size:13px;text-align:left}
+    th{background:#f5f5f5}
+    .bill-footer{display:flex;justify-content:space-between;font-weight:bold;margin-top:12px}
+    .badge-paid{color:#166534}.badge-unpaid{color:#991b1b}
+    img{max-width:100%}
+  </style></head><body>${preview.innerHTML}</body></html>`;
+}
+
+async function saveBillAsPDF() {
+  if (!lastBill) return toast('Generate a bill first', 'error');
+  const html = getBillPrintHTML();
+  if (window.electronAPI?.saveBillPDF) {
+    try {
+      const result = await window.electronAPI.saveBillPDF(html, lastBill.billNo);
+      if (!result.canceled) toast('Bill saved as PDF! ✅', 'success');
+    } catch (err) {
+      toast(`Could not save PDF: ${err.message}`, 'error');
+    }
+    return;
+  }
+
+  const win = window.open('', '_blank');
+  if (!win) return toast('Allow pop-ups to save the bill as PDF', 'error');
+  win.document.write(html);
+  win.document.close();
+  win.print();
+}
+
 function printBill() {
   if (!lastBill) return toast('Generate a bill first', 'error');
   const win = window.open('', '_blank');
-  win.document.write(`<html><head><title>Bill</title><style>body{font-family:sans-serif;padding:24px;max-width:480px;margin:auto}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ccc;padding:6px 8px;font-size:13px}th{background:#f5f5f5}.bill-footer{display:flex;justify-content:space-between;font-weight:bold;margin-top:12px}</style></head><body>${document.getElementById('bill-preview').innerHTML}</body></html>`);
+  if (!win) return toast('Allow pop-ups to print the bill', 'error');
+  win.document.write(getBillPrintHTML());
   win.document.close();
   win.print();
 }
@@ -750,6 +786,14 @@ async function checkWAStatus() {
   }
 }
 
+function openWhatsAppSync() {
+  if (window.electronAPI) {
+    window.electronAPI.openQR();
+  } else {
+    window.open(`${WA_SERVER}/qr`, '_blank', 'noopener');
+  }
+}
+
 function updateWABadge(badge, connected, qrReady) {
   if (connected) {
     badge.textContent = '🟢 WhatsApp Connected';
@@ -758,10 +802,7 @@ function updateWABadge(badge, connected, qrReady) {
   } else if (qrReady) {
     badge.textContent = '📱 Tap to Scan QR & Connect';
     badge.className = 'wa-badge qr';
-    badge.onclick = () => {
-      if (window.electronAPI) window.electronAPI.openQR();
-      else window.open(`${WA_SERVER}/qr`, '_blank');
-    };
+    badge.onclick = openWhatsAppSync;
   } else {
     badge.textContent = '🔴 Connecting...';
     badge.className = 'wa-badge offline';
@@ -1014,5 +1055,3 @@ renderCustomers();
 renderTransactions();
 renderDashboard();
 applySettingsToUI();
-
-
