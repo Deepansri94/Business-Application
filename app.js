@@ -757,7 +757,7 @@ function printBill() {
 }
 
 // ── WhatsApp Messages ────────────────────────────────────────────
-const WA_SERVER = 'http://localhost:3001';
+const WA_SERVER = 'http://127.0.0.1:3001';
 
 function toggleCustomerSelect() {
   const val = document.getElementById('msg-recipients').value;

@@ -15,23 +15,27 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 
 let sock = null;
 let qrCodeData = null;
 let isConnected = false;
+let connectionState = 'starting';
+let connectionError = null;
 
 // persist auth in user home so it survives app updates
 const AUTH_DIR = path.join(os.homedir(), '.shopmanager', 'auth_info');
 if (!fs.existsSync(AUTH_DIR)) fs.mkdirSync(AUTH_DIR, { recursive: true });
 
 async function connectWhatsApp() {
+  connectionState = 'initializing';
+  connectionError = null;
   try {
     const baileys = require('@whiskeysockets/baileys');
     const pino = require('pino');
-    const { Boom } = require('@hapi/boom');
 
     const makeWASocket = baileys.default || baileys.makeWASocket;
     const { useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = baileys;
 
     const logger = pino({ level: 'silent' });
     const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
-    const { version } = await fetchLatestBaileysVersion();
+    const { version, isLatest, error } = await fetchLatestBaileysVersion({ timeout: 10000 });
+    if (!isLatest) console.warn('Could not fetch latest WhatsApp version; using Baileys fallback:', error?.message);
 
     sock = makeWASocket({
       version,
@@ -47,21 +51,30 @@ async function connectWhatsApp() {
       if (qr) {
         qrCodeData = qr;
         isConnected = false;
+        connectionState = 'qr';
+        connectionError = null;
       }
       if (connection === 'open') {
         isConnected = true;
         qrCodeData = null;
+        connectionState = 'connected';
+        connectionError = null;
         console.log('✅ WhatsApp connected!');
       }
       if (connection === 'close') {
         isConnected = false;
         const code = lastDisconnect?.error?.output?.statusCode;
         const shouldReconnect = code !== DisconnectReason.loggedOut;
+        connectionState = shouldReconnect ? 'reconnecting' : 'logged-out';
+        connectionError = lastDisconnect?.error?.message || `Connection closed (${code || 'unknown reason'})`;
         console.log('Connection closed. Reconnect:', shouldReconnect, 'Code:', code);
         if (shouldReconnect) setTimeout(connectWhatsApp, 3000);
       }
+      if (connection === 'connecting') connectionState = 'connecting';
     });
   } catch (err) {
+    connectionState = 'retrying';
+    connectionError = err.message;
     console.error('WhatsApp init error:', err.message);
     setTimeout(connectWhatsApp, 5000);
   }
@@ -76,10 +89,13 @@ app.get('/qr', async (req, res) => {
     </body></html>`);
 
   if (!qrCodeData) return res.send(`
-    <html><head><meta http-equiv="refresh" content="3"></head>
-    <body style="font-family:sans-serif;text-align:center;padding:60px;background:#fefce8">
-    <h2 style="color:#854d0e">⏳ Generating QR Code...</h2>
-    <p style="color:#64748b">Please wait, refreshing automatically...</p>
+    <html><head><meta http-equiv="refresh" content="3">
+    <style>body{font-family:sans-serif;text-align:center;padding:60px;background:#fefce8}h2{color:#854d0e}p{color:#64748b}.error{color:#b91c1c;font-size:.9rem;max-width:460px;margin:18px auto}</style>
+    </head>
+    <body>
+    <h2>⏳ ${connectionState === 'retrying' ? 'Retrying WhatsApp connection...' : connectionState === 'reconnecting' ? 'Reconnecting to WhatsApp...' : connectionState === 'logged-out' ? 'WhatsApp logged out' : 'Connecting to WhatsApp...'}</h2>
+    <p>${connectionState === 'logged-out' ? 'This linked device was logged out. Remove it from Linked Devices on your phone, then restart the app to connect again.' : 'The QR code will appear here when WhatsApp is ready. This page refreshes automatically.'}</p>
+    ${connectionError ? `<p class="error">Connection detail: ${connectionError.replace(/[<>&"']/g, ch => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&#39;' })[ch])}</p>` : ''}
     </body></html>`);
 
   const imgSrc = await qrcode.toDataURL(qrCodeData);
@@ -102,7 +118,7 @@ app.get('/qr', async (req, res) => {
 
 // ── Status ───────────────────────────────────────────────────────
 app.get('/status', (req, res) => {
-  res.json({ connected: isConnected, qrReady: !!qrCodeData });
+  res.json({ connected: isConnected, qrReady: !!qrCodeData, connectionState, connectionError });
 });
 
 // ── Send Bulk ────────────────────────────────────────────────────

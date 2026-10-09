@@ -1,9 +1,9 @@
-const { app, BrowserWindow, shell, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, shell, ipcMain, dialog, utilityProcess } = require('electron');
 const path = require('path');
-const { fork } = require('child_process');
 const http = require('http');
 const https = require('https');
 
+const WA_SERVER = 'http://127.0.0.1:3001';
 let mainWindow;
 let qrWindow;
 let serverProcess;
@@ -12,20 +12,22 @@ let statusInterval;
 // ── Start WhatsApp backend server ────────────────────────────────
 function startServer() {
   const serverPath = app.isPackaged
-    ? path.join(__dirname.replace('app.asar', 'app.asar.unpacked'), 'server', 'index.js')
+    ? path.join(process.resourcesPath, 'app.asar.unpacked', 'server', 'index.js')
     : path.join(__dirname, 'server', 'index.js');
 
-  serverProcess = fork(serverPath, [], {
-    stdio: 'ignore',
+  serverProcess = utilityProcess.fork(serverPath, [], {
+    serviceName: 'WhatsApp backend',
+    stdio: 'pipe',
     env: { ...process.env }
   });
-  serverProcess.on('error', err => console.error('Server error:', err));
-  serverProcess.on('exit', code => console.log('Server exited:', code));
+  serverProcess.stdout?.on('data', chunk => console.log(`[WhatsApp backend] ${chunk.toString().trimEnd()}`));
+  serverProcess.stderr?.on('data', chunk => console.error(`[WhatsApp backend] ${chunk.toString().trimEnd()}`));
+  serverProcess.on('exit', code => console.log('WhatsApp backend exited:', code));
 }
 
 // ── Poll server status ───────────────────────────────────────────
 function pollStatus() {
-  http.get('http://localhost:3001/status', res => {
+  http.get(`${WA_SERVER}/status`, res => {
     let data = '';
     res.on('data', chunk => data += chunk);
     res.on('end', () => {
@@ -54,7 +56,7 @@ function openQRWindow() {
     webPreferences: { nodeIntegration: false, contextIsolation: true }
   });
   qrWindow.setMenuBarVisibility(false);
-  qrWindow.loadURL('http://localhost:3001/qr');
+  qrWindow.loadURL(`${WA_SERVER}/qr`);
   qrWindow.on('closed', () => qrWindow = null);
 }
 
